@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import albumentations
 import collections
 import cv2
 import datetime
@@ -14,6 +15,7 @@ import pickle
 import random
 import re
 import sklearn
+import scipy as sp
 import scipy.signal
 import scipy.stats as stats
 import seaborn as sns
@@ -25,6 +27,9 @@ torch.backends.cudnn.benchmark = True
 import torch.nn as nn
 import torch.utils.data
 import torch.nn.functional as F
+import torchvision
+import torchvision.transforms as transforms
+from albumentations.pytorch import ToTensorV2
 from contextlib import contextmanager
 from collections import Counter, defaultdict, OrderedDict
 from sklearn import metrics
@@ -46,6 +51,10 @@ import tensorflow as tf
 
 from tqdm import tqdm
 tqdm.pandas()
+
+import skimage.io
+from PIL import Image
+import matplotlib.pyplot as plt
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -92,28 +101,81 @@ setup_logger(out_file=LOGGER_PATH)
 LOGGER.info("seed={}".format(SEED))
 
 
+# https://albumentations.readthedocs.io/en/latest/api/augmentations.html
+data_transforms = albumentations.Compose([
+    albumentations.Flip(p=0.3),  
+    albumentations.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=(15,30), p=0.5),
+    albumentations.Cutout(p=0.3),
+    # albumentations.Resize(128, 128, p=1),
+    albumentations.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+    ),
+    ToTensorV2(),
+    ])
+
+data_transforms_test = albumentations.Compose([
+    # albumentations.Flip(p=0),     
+    # albumentations.Resize(128, 128, p=1), 
+    albumentations.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+    ),
+    ToTensorV2(),
+    ])
+
+
+def tile(img, sz=128, N=16):
+    shape = img.shape
+    pad0,pad1 = (sz - shape[0]%sz)%sz, (sz - shape[1]%sz)%sz
+    img = np.pad(img,[[pad0//2,pad0-pad0//2],[pad1//2,pad1-pad1//2],[0,0]],
+                 constant_values=255)
+    img = img.reshape(img.shape[0]//sz,sz,img.shape[1]//sz,sz,3)
+    img = img.transpose(0,2,1,3,4).reshape(-1,sz,sz,3)
+    if len(img) < N:
+        img = np.pad(img,[[0,N-len(img)],[0,0],[0,0],[0,0]],constant_values=255)
+    idxs = np.argsort(img.reshape(img.shape[0],-1).sum(-1))[:N]
+    img = img[idxs]
+    return img
+
+
 class PANDADataset:
-    def __init__(self, df, target_cols, indices, map_path):
+    def __init__(self, df, target_cols, indices, transform=None):
         self.df = df.iloc[indices]
-        self.target = df.iloc[indices][target_cols+['Id']]
-        self.target = self.target.fillna(self.target.mean())
-        self.map_path = map_path
-        self.target_cols = target_cols
+        self.target = df.iloc[indices][target_cols].values
+        self.data_provider = df.iloc[indices]['data_provider'].values
+        self.gleason_score = df.iloc[indices]['gleason_score'].values
+        self.transform = transform
 
     def __len__(self):
         return len(self.target)
 
     def __getitem__(self, item):
 
-        IDX = self.df.iloc[item].Id        
-        path = self.map_path + str(IDX)
+        level = 2 # 一番小さかった data
+        file_name = self.df['image_id'].values[item]
+        file_path = config.TRAIN_IMG_PATH + f'{file_name}_{level}.jpeg'
+        image = skimage.io.MultiImage(file_path)
+        image = np.array(image)
+        image = image.reshape(image.shape[1], image.shape[2], 3)
+        image = tile(image, sz=128, N=9)
         
-        all_maps = h5py.File(path + '.mat', 'r')['SM_feature'][()]
-        targets = self.target[self.target.Id==IDX][self.target_cols].values
+        # level2 -> 9tile, level1 -> 16tile
+        image = cv2.hconcat([cv2.vconcat([image[0], image[1], image[2]]), 
+                             cv2.vconcat([image[3], image[4], image[5]]), 
+                             cv2.vconcat([image[6], image[7], image[8]])])
+        
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        if self.transform:
+            augmented = self.transform(image=image)
+            image = augmented['image']
+                        
 
+        targets = self.target
+            
         return {
-            'idx': torch.tensor(IDX, dtype=torch.float32)
-            'features': torch.tensor(all_maps, dtype=torch.float32),
+            'file_names': file_name,
+            'images': torch.tensor(image, dtype=torch.float32),
             'targets': torch.tensor(targets, dtype=torch.float32),
         }
 

@@ -3,15 +3,60 @@ import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm
+from sklearn.metrics import cohen_kappa_score
 
 
-def weighted_nae(inp, targ):
-    W = torch.FloatTensor([0.3, 0.175, 0.175, 0.175, 0.175])
-    return torch.mean(torch.matmul(torch.abs(inp - targ), W.cuda()/torch.mean(targ, axis=0)))
+def quadratic_weighted_kappa(y_hat, y):
+    return cohen_kappa_score(y_hat, y, weights='quadratic')
 
 
-def metric(y_true, y_pred):
-    return np.mean(np.sum(np.abs(y_true - y_pred), axis=0) / np.sum(y_true, axis=0))
+class OptimizedRounder():
+    def __init__(self):
+        self.coef_ = 0
+
+    def _kappa_loss(self, coef, X, y):
+        X_p = np.copy(X)
+        for i, pred in enumerate(X_p):
+            if pred < coef[0]:
+                X_p[i] = 0
+            elif pred >= coef[0] and pred < coef[1]:
+                X_p[i] = 1
+            elif pred >= coef[1] and pred < coef[2]:
+                X_p[i] = 2
+            elif pred >= coef[2] and pred < coef[3]:
+                X_p[i] = 3
+            elif pred >= coef[3] and pred < coef[4]:
+                X_p[i] = 4
+            else:
+                X_p[i] = 5
+
+        ll = quadratic_weighted_kappa(y, X_p)
+        return -ll
+
+    def fit(self, X, y):
+        loss_partial = partial(self._kappa_loss, X=X, y=y)
+        initial_coef = [0.5, 1.5, 2.5, 3.5, 4.5]
+        self.coef_ = sp.optimize.minimize(loss_partial, initial_coef, method='nelder-mead')
+
+    def predict(self, X, coef):
+        X_p = np.copy(X)
+        for i, pred in enumerate(X_p):
+            if pred < coef[0]:
+                X_p[i] = 0
+            elif pred >= coef[0] and pred < coef[1]:
+                X_p[i] = 1
+            elif pred >= coef[1] and pred < coef[2]:
+                X_p[i] = 2
+            elif pred >= coef[2] and pred < coef[3]:
+                X_p[i] = 3
+            elif pred >= coef[3] and pred < coef[4]:
+                X_p[i] = 4
+            else:
+                X_p[i] = 5
+        return X_p
+
+    def coefficients(self):
+        return self.coef_['x']
 
 
 class AverageMeter(object):
@@ -57,20 +102,18 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
     y_pred = []
     for bi, d in enumerate(tk0):
 
-        features = d["features"].to(device, dtype=torch.float32)
-        targets = d["targets"].to(device, dtype=torch.float32).view(-1, 5)
-
+        images = d["images"].to(device, dtype=torch.float32)
+        targets = d["targets"].to(device, dtype=torch.float32)
         model.zero_grad()
         outputs = model(features)
 
-        loss = weighted_nae(outputs, targets)
+        loss = loss_fn(outputs, targets)
         loss.backward()
         optimizer.step()
 
         y_true.append(targets.cpu().detach().numpy())
         y_pred.append(outputs.cpu().detach().numpy())
-
-        losses.update(loss.item(), features.size(0))
+        losses.update(loss.item(), images.size(0))
         tk0.set_postfix(loss=losses.avg)
 
     y_true = np.concatenate(y_true, 0)
@@ -87,27 +130,26 @@ def eval_fn(data_loader, model, device):
     with torch.no_grad():
         tk0 = tqdm(data_loader, total=len(data_loader))
         for bi, d in enumerate(tk0):
-            features = d["features"].to(device, dtype=torch.float32)
-            targets = d["targets"].to(device, dtype=torch.float32).view(-1, 5)
+            images = d["images"].to(device, dtype=torch.float32)
+            targets = d["targets"].to(device, dtype=torch.float32)
             outputs = model(features)
-            loss = weighted_nae(outputs, targets)
+            loss = loss_fn(outputs, targets)
             y_true.append(targets.cpu().detach().numpy())
             y_pred.append(outputs.cpu().detach().numpy())
-            val_ids.append(d["idx"].numpy())
-            losses.update(loss.item(), features.size(0))
+            val_ids.append(d["file_names"])
+            losses.update(loss.item(), images.size(0))
             tk0.set_postfix(loss=losses.avg)
     y_true = np.concatenate(y_true, 0)
     y_pred = np.concatenate(y_pred, 0)
     val_ids = np.concatenate(val_ids, 0)
 
-    domain = ['age', 'domain1_var1', 'domain1_var2', 'domain2_var1', 'domain2_var2']
-    w = [0.3, 0.175, 0.175, 0.175, 0.175]
 
-    m_all = 0
-    for i in range(5):
-        m = metric(y_true[:,i], y_pred[:,i])
-        print(domain[i],'metric:', m)
-        m_all += m*w[i]
+    optimized_rounder.fit(preds, valid_labels)
+    coefficients = optimized_rounder.coefficients()
+    final_preds = optimized_rounder.predict(preds, coefficients)
+    print(f'Counter preds: {Counter(np.concatenate(final_preds))}')
+    print(f'coefficients: {coefficients}')
+    kappa = quadratic_weighted_kappa(y_pred, final_preds)
 
-    print('all_metric:', m_all)
-    return m_all, losses.avg, val_ids, y_pred        
+    print('kappa score:', m_all)
+    return kappa, losses.avg, val_ids, y_pred        
