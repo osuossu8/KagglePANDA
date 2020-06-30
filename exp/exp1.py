@@ -182,7 +182,7 @@ def run_one_fold(fold_id):
     df_train = pd.read_csv(config.TRAIN_PATH)
     print(df_train.shape)
 
-    DEBUG = 1
+    DEBUG = 0
     if DEBUG:
         df_train = df_train.head(100)
 
@@ -259,7 +259,7 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
 
-    for fold_id in range(5):
+    for fold_id in range(config.NUM_FOLDS):
 
         LOGGER.info("Starting fold {} ...".format(fold_id))
 
