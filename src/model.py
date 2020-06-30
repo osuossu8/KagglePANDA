@@ -4,11 +4,25 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import math
 from functools import partial
-
+from torch.utils import model_zoo
 
 from collections import OrderedDict
 import math
 
+
+pretrained_settings = {
+    'se_resnext50_32x4d': {
+        'imagenet': {
+            'url': 'http://data.lip6.fr/cadene/pretrainedmodels/se_resnext50_32x4d-a260b3a4.pth',
+            'input_space': 'RGB',
+            'input_size': [3, 224, 224],
+            'input_range': [0, 1],
+            'mean': [0.485, 0.456, 0.406],
+            'std': [0.229, 0.224, 0.225],
+            'num_classes': 1000
+        }
+    },
+}
 
 class SEModule(nn.Module):
 
@@ -286,7 +300,6 @@ def se_resnext101_32x4d(num_classes=1000, pretrained='imagenet'):
 
 
 # pretrained_path = {'se_resnext50_32x4d': '../input/pytorch-se-resnext/se_resnext50_32x4d-a260b3a4.pth'}
-pretrained_path = {'se_resnext50_32x4d': 'http://data.lip6.fr/cadene/pretrainedmodels/se_resnext50_32x4d-a260b3a4.pth'}
 
 class CustomSEResNeXt(nn.Module):
 
@@ -295,10 +308,12 @@ class CustomSEResNeXt(nn.Module):
         super().__init__()
         
         self.model = se_resnext50_32x4d(pretrained=None)
-        weights_path = pretrained_path[model_name]
-        self.model.load_state_dict(torch.load(weights_path))
+        settings = pretrained_settings['se_resnext50_32x4d']['imagenet']
+        initialize_pretrained_model(self.model, 1000, settings)
+        #weights_path = pretrained_path[model_name]
+        #self.model.load_state_dict(torch.load(weights_path))
         self.model.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.model.last_linear = nn.Linear(self.model.last_linear.in_features, CFG.target_size)
+        self.model.last_linear = nn.Linear(self.model.last_linear.in_features, 1)
         
     def forward(self, x):
         x = self.model(x)

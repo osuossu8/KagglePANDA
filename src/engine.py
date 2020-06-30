@@ -3,6 +3,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm
+
+import scipy as sp
+from functools import partial
+from collections import defaultdict, Counter
 from sklearn.metrics import cohen_kappa_score
 
 
@@ -105,7 +109,7 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
         images = d["images"].to(device, dtype=torch.float32)
         targets = d["targets"].to(device, dtype=torch.float32)
         model.zero_grad()
-        outputs = model(features)
+        outputs = model(images).view(-1)
 
         loss = loss_fn(outputs, targets)
         loss.backward()
@@ -132,7 +136,7 @@ def eval_fn(data_loader, model, device):
         for bi, d in enumerate(tk0):
             images = d["images"].to(device, dtype=torch.float32)
             targets = d["targets"].to(device, dtype=torch.float32)
-            outputs = model(features)
+            outputs = model(images).view(-1)
             loss = loss_fn(outputs, targets)
             y_true.append(targets.cpu().detach().numpy())
             y_pred.append(outputs.cpu().detach().numpy())
@@ -141,15 +145,14 @@ def eval_fn(data_loader, model, device):
             tk0.set_postfix(loss=losses.avg)
     y_true = np.concatenate(y_true, 0)
     y_pred = np.concatenate(y_pred, 0)
-    val_ids = np.concatenate(val_ids, 0)
 
-
-    optimized_rounder.fit(preds, valid_labels)
+    optimized_rounder = OptimizedRounder()
+    optimized_rounder.fit(y_pred, y_true)
     coefficients = optimized_rounder.coefficients()
-    final_preds = optimized_rounder.predict(preds, coefficients)
-    print(f'Counter preds: {Counter(np.concatenate(final_preds))}')
+    final_preds = optimized_rounder.predict(y_pred, coefficients)
+    print(f'Counter preds: {Counter(final_preds)}')
     print(f'coefficients: {coefficients}')
-    kappa = quadratic_weighted_kappa(y_pred, final_preds)
+    kappa = quadratic_weighted_kappa(y_true, final_preds)
 
-    print('kappa score:', m_all)
-    return kappa, losses.avg, val_ids, y_pred        
+    print('kappa score:', kappa)
+    return kappa, losses.avg, val_ids, final_preds   

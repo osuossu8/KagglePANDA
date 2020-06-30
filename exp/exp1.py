@@ -140,24 +140,22 @@ def tile(img, sz=128, N=16):
 
 
 class PANDADataset:
-    def __init__(self, df, target_cols, indices, transform=None):
+    def __init__(self, df, indices, transform=None):
         self.df = df.iloc[indices]
-        self.target = df.iloc[indices][target_cols].values
         self.data_provider = df.iloc[indices]['data_provider'].values
         self.gleason_score = df.iloc[indices]['gleason_score'].values
         self.transform = transform
 
     def __len__(self):
-        return len(self.target)
+        return len(self.df)
 
     def __getitem__(self, item):
 
         level = 2 # 一番小さかった data
         file_name = self.df['image_id'].values[item]
         file_path = config.TRAIN_IMG_PATH + f'{file_name}_{level}.jpeg'
-        image = skimage.io.MultiImage(file_path)
+        image = cv2.imread(file_path) # skimage.io.MultiImage(file_path)
         image = np.array(image)
-        image = image.reshape(image.shape[1], image.shape[2], 3)
         image = tile(image, sz=128, N=9)
         
         # level2 -> 9tile, level1 -> 16tile
@@ -170,9 +168,8 @@ class PANDADataset:
             augmented = self.transform(image=image)
             image = augmented['image']
                         
-
-        targets = self.target
-            
+        targets = self.df['isup_grade'].values[item]
+        
         return {
             'file_names': file_name,
             'images': torch.tensor(image, dtype=torch.float32),
@@ -187,9 +184,10 @@ def run_one_fold(fold_id):
 
     DEBUG = 1
     if DEBUG:
-        df_train = df_train.head(150)
+        df_train = df_train.head(100)
 
     TARGETS = 'isup_grade'
+
 
     kf = StratifiedKFold(n_splits = config.NUM_FOLDS, random_state = SEED)
     splits = list(kf.split(X=df_train, y=df_train[TARGETS].values))
@@ -197,7 +195,7 @@ def run_one_fold(fold_id):
     train_idx = splits[fold_id][0]
     val_idx = splits[fold_id][1]
 
-    train_dataset = PANDADataset(df=df_train, target_cols=TARGETS, indices=train_idx, 
+    train_dataset = PANDADataset(df=df_train, indices=train_idx, 
                                  transform=data_transforms)
 
     train_loader = torch.utils.data.DataLoader(
@@ -205,7 +203,7 @@ def run_one_fold(fold_id):
                    batch_size=config.TRAIN_BATCH_SIZE,
                    num_workers=0, pin_memory=True)
 
-    val_dataset = PANDADataset(df=df_train, target_cols=TARGETS, indices=val_idx, 
+    val_dataset = PANDADataset(df=df_train, indices=val_idx, 
                                transform=data_transforms_test)
 
     val_loader = torch.utils.data.DataLoader(
