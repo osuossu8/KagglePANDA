@@ -5,8 +5,8 @@ import torch
 sys.path.append("/usr/src/app/kaggle/panda-challenge")
 
 
-TRAIN_BATCH_SIZE = 32
-VALID_BATCH_SIZE = 16
+TRAIN_BATCH_SIZE = 64
+VALID_BATCH_SIZE = 32
 EPOCHS = 30
 NUM_FOLDS = 4
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

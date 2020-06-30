@@ -64,7 +64,7 @@ sys.path.append("/usr/src/app/kaggle/panda-challenge")
 EXP_ID = 'exp1'
 import configs.config as config
 import src.engine as engine
-from src.model import resnet10, resnet34
+from src.model import CustomSEResNeXt
 from src.machine_learning_util import seed_everything, prepare_labels, timer, to_pickle, unpickle
 
 
@@ -182,53 +182,42 @@ class PANDADataset:
 
 def run_one_fold(fold_id):
 
-    fnc_df = pd.read_csv(config.FNC_PATH)
-    loading_df = pd.read_csv(config.LOADING_PATH)
-    labels_df = pd.read_csv(config.TRAIN_SCORES_PATH)
+    df_train = pd.read_csv(config.TRAIN_PATH)
+    print(df_train.shape)
 
+    DEBUG = 1
+    if DEBUG:
+        df_train = df_train.head(150)
 
-    fnc_features, loading_features = list(fnc_df.columns[1:]), list(loading_df.columns[1:])
-    df = fnc_df.merge(loading_df, on="Id")
-    labels_df["is_train"] = True
+    TARGETS = 'isup_grade'
 
-    df = df.merge(labels_df, on="Id", how="left")
-
-    df['bin_age'] = pd.cut(df['age'], [i for i in range(0, 100, 10)], labels=False)
-
-    df_test = df[df["is_train"] != True].copy()
-    df_train = df[df["is_train"] == True].copy()
-
-
-    num_folds = config.NUM_FOLDS
-    kf = StratifiedKFold(n_splits = num_folds, random_state = SEED)
-    splits = list(kf.split(X=df_train, y=df_train[['bin_age']]))
+    kf = StratifiedKFold(n_splits = config.NUM_FOLDS, random_state = SEED)
+    splits = list(kf.split(X=df_train, y=df_train[TARGETS].values))
 
     train_idx = splits[fold_id][0]
     val_idx = splits[fold_id][1]
 
-    target_cols = ['age', 'domain1_var1', 'domain1_var2', 'domain2_var1', 'domain2_var2']
+    train_dataset = PANDADataset(df=df_train, target_cols=TARGETS, indices=train_idx, 
+                                 transform=data_transforms)
 
-    print(len(train_idx), len(val_idx))
-
-
-    train_dataset = PANDADataset(df=df_train, target_cols=target_cols, indices=train_idx, map_path=config.TRAIN_MAP_PATH)
     train_loader = torch.utils.data.DataLoader(
-                train_dataset, shuffle=True, 
-                batch_size=config.TRAIN_BATCH_SIZE,
-                num_workers=0, pin_memory=True)
+                   train_dataset, shuffle=True, 
+                   batch_size=config.TRAIN_BATCH_SIZE,
+                   num_workers=0, pin_memory=True)
 
-    val_dataset = PANDADataset(df=df_train, target_cols=target_cols, indices=val_idx, map_path=config.TRAIN_MAP_PATH)
+    val_dataset = PANDADataset(df=df_train, target_cols=TARGETS, indices=val_idx, 
+                               transform=data_transforms_test)
+
     val_loader = torch.utils.data.DataLoader(
-                val_dataset, shuffle=False, 
-                batch_size=config.VALID_BATCH_SIZE,
-                num_workers=0, pin_memory=True)
+                 val_dataset, shuffle=False, 
+                 batch_size=config.VALID_BATCH_SIZE,
+                 num_workers=0, pin_memory=True)
 
     del train_dataset, val_dataset
     gc.collect()
 
-
     device = config.DEVICE
-    model = resnet10()
+    model = CustomSEResNeXt(model_name='se_resnext50_32x4d')
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LR)
