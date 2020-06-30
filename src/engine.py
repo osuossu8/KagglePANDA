@@ -83,6 +83,7 @@ def eval_fn(data_loader, model, device):
     losses = AverageMeter()
     y_true = []
     y_pred = []
+    val_ids = []
     with torch.no_grad():
         tk0 = tqdm(data_loader, total=len(data_loader))
         for bi, d in enumerate(tk0):
@@ -92,10 +93,12 @@ def eval_fn(data_loader, model, device):
             loss = weighted_nae(outputs, targets)
             y_true.append(targets.cpu().detach().numpy())
             y_pred.append(outputs.cpu().detach().numpy())
+            val_ids.append(d["idx"].numpy())
             losses.update(loss.item(), features.size(0))
             tk0.set_postfix(loss=losses.avg)
     y_true = np.concatenate(y_true, 0)
     y_pred = np.concatenate(y_pred, 0)
+    val_ids = np.concatenate(val_ids, 0)
 
     domain = ['age', 'domain1_var1', 'domain1_var2', 'domain2_var1', 'domain2_var2']
     w = [0.3, 0.175, 0.175, 0.175, 0.175]
@@ -107,4 +110,4 @@ def eval_fn(data_loader, model, device):
         m_all += m*w[i]
 
     print('all_metric:', m_all)
-    return m_all, losses.avg        
+    return m_all, losses.avg, val_ids, y_pred        
