@@ -61,9 +61,9 @@ warnings.filterwarnings('ignore')
 
 sys.path.append("/usr/src/app/kaggle/panda-challenge")
 
-EXP_ID = 'exp1'
+EXP_ID = 'exp2'
 import configs.config as config
-import src.engine as engine
+import src.engine2 as engine
 from src.model import CustomSEResNeXt
 from src.machine_learning_util import seed_everything, prepare_labels, timer, to_pickle, unpickle
 
@@ -143,7 +143,6 @@ class PANDADataset:
     def __init__(self, df, indices, transform=None):
         self.df = df.iloc[indices]
         self.data_provider = df.iloc[indices]['data_provider'].values
-        self.gleason_score = df.iloc[indices]['gleason_score'].values
         self.transform = transform
 
     def __len__(self):
@@ -180,7 +179,7 @@ class PANDADataset:
 def run_one_fold(fold_id):
 
     df_train = pd.read_csv(config.TRAIN_PATH)
-    print(df_train.shape)
+    LOGGER.info(df_train.shape)
 
     DEBUG = 0
     if DEBUG:
