@@ -62,8 +62,9 @@ warnings.filterwarnings('ignore')
 sys.path.append("/usr/src/app/kaggle/panda-challenge")
 
 EXP_ID = 'exp2'
-import configs.config as config
+import configs.config2 as config
 import src.engine2 as engine
+# from src.model2 import CustomSEResNeXtV2 as CustomSEResNeXt
 from src.model import CustomSEResNeXt
 from src.machine_learning_util import seed_everything, prepare_labels, timer, to_pickle, unpickle
 
@@ -102,27 +103,68 @@ LOGGER.info("seed={}".format(SEED))
 
 
 # https://albumentations.readthedocs.io/en/latest/api/augmentations.html
+'''
 data_transforms = albumentations.Compose([
-    albumentations.Flip(p=0.3),  
-    albumentations.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=(15,30), p=0.5),
+    # albumentations.Flip(p=0.3),  
+    albumentations.Transpose(p=0.5),
+    albumentations.VerticalFlip(p=0.5),
+    albumentations.HorizontalFlip(p=0.5),
+    albumentations.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=(15,30), p=0.3),
     albumentations.Cutout(p=0.3),
-    # albumentations.Resize(128, 128, p=1),
     albumentations.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225],
     ),
-    ToTensorV2(),
+    # ToTensorV2(),
     ])
 
+
 data_transforms_test = albumentations.Compose([
-    # albumentations.Flip(p=0),     
-    # albumentations.Resize(128, 128, p=1), 
     albumentations.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225],
     ),
-    ToTensorV2(),
+    # ToTensorV2(),
     ])
+'''
+
+data_transforms = albumentations.Compose([
+    albumentations.Transpose(p=0.5),
+    albumentations.VerticalFlip(p=0.5),
+    albumentations.HorizontalFlip(p=0.5),
+])
+
+data_transforms_test = albumentations.Compose([])
+
+
+def panda_resize(img):
+    return albumentations.Compose([albumentations.Resize(256*4, 256*2, p=1)])(image=img)['image']
+
+
+def get_tiles(img, mode=0):
+    result = []
+    h, w, c = img.shape
+    pad_h = (tile_size - h % tile_size) % tile_size + ((tile_size * mode) // 2)
+    pad_w = (tile_size - w % tile_size) % tile_size + ((tile_size * mode) // 2)
+
+    img2 = np.pad(img,[[pad_h // 2, pad_h - pad_h // 2], [pad_w // 2,pad_w - pad_w//2], [0,0]], constant_values=255)
+    img3 = img2.reshape(
+            img2.shape[0] // tile_size,
+            tile_size,
+            img2.shape[1] // tile_size,
+            tile_size,
+            3
+    )
+
+    img3 = img3.transpose(0,2,1,3,4).reshape(-1, tile_size, tile_size,3)
+    n_tiles_with_info = (img3.reshape(img3.shape[0],-1).sum(1) < tile_size ** 2 * 3 * 255).sum()
+    if len(img3) < n_tiles:
+        img3 = np.pad(img3,[[0,n_tiles-len(img3)],[0,0],[0,0],[0,0]], constant_values=255)
+    idxs = np.argsort(img3.reshape(img3.shape[0],-1).sum(-1))[:n_tiles]
+    img3 = img3[idxs]
+    for i in range(len(img3)):
+        result.append({'img':img3[i], 'idx':i})
+    return result, n_tiles_with_info >= n_tiles
 
 
 def tile(img, sz=128, N=16):
@@ -139,6 +181,37 @@ def tile(img, sz=128, N=16):
     return img
 
 
+def get_conc_tile(image):
+    conc_image = cv2.hconcat([cv2.vconcat([image[0], image[1], image[2]]),
+                             cv2.vconcat([image[3], image[4], image[5]]),
+                             cv2.vconcat([image[6], image[7], image[8]])])
+    return conc_image
+
+
+def get_conc_tile16(image):
+    conc_image = cv2.hconcat([cv2.vconcat([image[0], image[1], image[2], image[3]]),
+                             cv2.vconcat([image[4], image[5], image[6], image[7]]),
+                             cv2.vconcat([image[8], image[9], image[10], image[11]]),
+                             cv2.vconcat([image[12], image[13], image[14], image[15]])])
+    return conc_image
+
+
+def get_conc_tile25(image):
+    conc_image = cv2.hconcat([cv2.vconcat([image[0], image[1], image[2], image[3], image[4]]),
+                             cv2.vconcat([image[5], image[6], image[7], image[8], image[9]]),
+                             cv2.vconcat([image[10], image[11], image[12], image[13], image[14]]),
+                             cv2.vconcat([image[15], image[16], image[17], image[18], image[19]]),
+                             cv2.vconcat([image[20], image[21], image[22], image[23], image[24]])])
+    return conc_image
+
+
+tile_mode = 0
+tile_size = 128 # 256
+image_size = 128 # 256
+n_tiles = 36
+idxes = list(range(n_tiles))
+
+
 class PANDADataset:
     def __init__(self, df, indices, transform=None):
         self.df = df.iloc[indices]
@@ -150,28 +223,49 @@ class PANDADataset:
 
     def __getitem__(self, item):
 
-        level = 2 # 一番小さかった data
+        level = 1 # 2# 一番小さかった data
         file_name = self.df['image_id'].values[item]
         file_path = config.TRAIN_IMG_PATH + f'{file_name}_{level}.jpeg'
-        image = cv2.imread(file_path) # skimage.io.MultiImage(file_path)
-        image = np.array(image)
-        image = tile(image, sz=128, N=9)
-        
-        # level2 -> 9tile, level1 -> 16tile
-        image = cv2.hconcat([cv2.vconcat([image[0], image[1], image[2]]), 
-                             cv2.vconcat([image[3], image[4], image[5]]), 
-                             cv2.vconcat([image[6], image[7], image[8]])])
-        
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        if self.transform:
-            augmented = self.transform(image=image)
-            image = augmented['image']
-                        
+        image = cv2.imread(file_path) 
+        # image = np.array(image)
+
+        # tile image
+        # image = tile(image, sz=128, N=9)
+        # image = get_conc_tile(image)        
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        tiles, OK = get_tiles(image, tile_mode)
+
+        n_row_tiles = int(np.sqrt(n_tiles))
+        images = np.zeros((image_size * n_row_tiles, image_size * n_row_tiles, 3))
+        for h in range(n_row_tiles):
+            for w in range(n_row_tiles):
+                i = h * n_row_tiles + w
+    
+                if len(tiles) > idxes[i]:
+                    this_img = tiles[idxes[i]]['img']
+                else:
+                    this_img = np.ones((image_size, image_size, 3)).astype(np.uint8) * 255
+                # this_img = 255 - this_img
+                if self.transform is not None:
+                    this_img = self.transform(image=this_img)['image']
+                h1 = h * image_size
+                w1 = w * image_size
+                images[h1:h1+image_size, w1:w1+image_size] = this_img
+                
+        if self.transform is not None:
+            augmented = self.transform(image=images)
+            images = augmented['image']
+
+        images = images.astype(np.float32)
+        images /= 255
+        images = images.transpose(2, 0, 1) 
+
         targets = self.df['isup_grade'].values[item]
         
         return {
             'file_names': file_name,
-            'images': torch.tensor(image, dtype=torch.float32),
+            'images': torch.tensor(images, dtype=torch.float32),
             'targets': torch.tensor(targets, dtype=torch.float32),
         }
 

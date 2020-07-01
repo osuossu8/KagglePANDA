@@ -11,7 +11,7 @@ from functools import partial
 from collections import defaultdict, Counter
 from sklearn.metrics import cohen_kappa_score
 
-LOGGER = logging.getLogger()
+# LOGGER = logging.getLogger()
 
 
 def quadratic_weighted_kappa(y_hat, y):
@@ -111,9 +111,11 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
     for bi, d in enumerate(tk0):
 
         images = d["images"].to(device, dtype=torch.float32)
+        # images_lv1 = d["images_lv1"].to(device, dtype=torch.float32)
         targets = d["targets"].to(device, dtype=torch.float32)
         model.zero_grad()
         outputs = model(images).view(-1)
+        # outputs = model(images, images_lv1).view(-1)
 
         loss = loss_fn(outputs, targets)
         loss.backward()
@@ -140,8 +142,10 @@ def eval_fn(data_loader, model, device):
         tk0 = tqdm(data_loader, total=len(data_loader))
         for bi, d in enumerate(tk0):
             images = d["images"].to(device, dtype=torch.float32)
+            # images_lv1 = d["images_lv1"].to(device, dtype=torch.float32)
             targets = d["targets"].to(device, dtype=torch.float32)
             outputs = model(images).view(-1)
+            # outputs = model(images, images_lv1).view(-1)
             loss = loss_fn(outputs, targets)
             y_true.append(targets.cpu().detach().numpy())
             y_pred.append(outputs.cpu().detach().numpy())
@@ -153,15 +157,15 @@ def eval_fn(data_loader, model, device):
     y_pred = np.concatenate(y_pred, 0)
 
     # rank 化する
-    y_pred = rankdata(y_pred) / len(y_pred)
+    # y_pred = rankdata(y_pred) / len(y_pred)
 
     optimized_rounder = OptimizedRounder()
     optimized_rounder.fit(y_pred, y_true)
     coefficients = optimized_rounder.coefficients()
     final_preds = optimized_rounder.predict(y_pred, coefficients)
-    LOGGER.info(f'Counter preds: {Counter(final_preds)}')
-    LOGGER.info(f'coefficients: {coefficients}')
+    print(f'Counter preds: {Counter(final_preds)}')
+    print(f'coefficients: {coefficients}')
     kappa = quadratic_weighted_kappa(y_true, final_preds)
 
-    LOGGER.info('kappa score:', kappa)
+    print('kappa score:', kappa)
     return kappa, losses.avg, val_ids, final_preds   
