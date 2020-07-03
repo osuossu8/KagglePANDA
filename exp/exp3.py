@@ -272,8 +272,7 @@ class PANDADataset:
 
 
 def considering_target_distributed_split(df, random_state=42):
-    import random 
-                    
+
     karo_index = list(df[df['data_provider']=='karolinska'].index)
     rad_index = list(df[df['data_provider']=='radboud'].index)
 
@@ -285,10 +284,10 @@ def considering_target_distributed_split(df, random_state=42):
     karo_b = karo_index[int(len(karo_index)/3):int(len(karo_index)/3*2)]
     karo_c = karo_index[int(len(karo_index)/3*2):]
 
-    rad_a = rad_index[:int(len(rad_index)/3)
+    rad_a = rad_index[:int(len(rad_index)/3)]
     rad_b = rad_index[int(len(rad_index)/3):int(len(rad_index)/3*2)]
     rad_c = rad_index[int(len(rad_index)/3*2):]
-                                                            
+    
     splits = [(np.array(karo_a+karo_b+rad_c), np.array(rad_a+rad_b+karo_c)),
               (np.array(karo_b+karo_c+rad_a), np.array(rad_b+rad_c+karo_a)),
               (np.array(karo_c+karo_a+rad_b), np.array(rad_c+rad_a+karo_b))]

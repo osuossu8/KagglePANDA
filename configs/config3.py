@@ -5,8 +5,8 @@ import torch
 sys.path.append("/home/osuosuossu18/KagglePANDA")
 
 
-TRAIN_BATCH_SIZE = 16
-VALID_BATCH_SIZE = 16
+TRAIN_BATCH_SIZE = 8
+VALID_BATCH_SIZE = 8
 EPOCHS = 30
 NUM_FOLDS = 3
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
