@@ -203,7 +203,7 @@ class PANDADataset:
         file_name = self.df['image_id'].values[item]
         file_path = config.TRAIN_IMG_PATH + f'{file_name}_{level}.jpeg'
         image = cv2.imread(file_path) 
-        image = clean_image(image)
+        # image = clean_image(image)
 
         tiles, OK = get_tiles(image, tile_mode)
 
