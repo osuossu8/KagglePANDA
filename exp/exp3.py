@@ -373,10 +373,48 @@ def run_one_fold(fold_id):
     LOGGER.info("best score={} on epoch={}".format(best_score, best_epoch))
 
 
+def calc_overall_kappa(EXP_ID):
+    df_train = pd.read_csv(config.TRAIN_PATH)
+    val_idices0, val_preds0 = unpickle(f'models/{EXP_ID}_fold0.pkl')
+    val_idices1, val_preds1 = unpickle(f'models/{EXP_ID}_fold1.pkl')
+    val_idices2, val_preds2 = unpickle(f'models/{EXP_ID}_fold2.pkl')
+    # val_idices3, val_preds3 = unpickle(f'models/{EXP_ID}_fold3.pkl')
+
+    all_idx = np.concatenate([np.concatenate(val_idices0), 
+                              np.concatenate(val_idices1),
+                              np.concatenate(val_idices2),
+                              # np.concatenate(val_idices3),
+                              ])
+
+    all_val_preds = np.concatenate([val_preds0,
+                                    val_preds1,
+                                    val_preds2,
+                                    # val_preds3,
+                                   ])
+
+
+    df_val = pd.DataFrame(columns=['image_id', 'isup_grade'])
+    df_val['image_id'] = all_idx
+    df_val['isup_grade'] = all_val_preds
+
+    df_val = df_val.groupby('image_id').mean().reset_index(drop=True)
+    print(df_val.shape)
+    print(df_val.head(3))
+
+    optimized_rounder = engine.OptimizedRounder()
+    optimized_rounder.fit(df_val.isup_grade, df_train.isup_grade)
+    coefficients = optimized_rounder.coefficients()
+    final_preds = optimized_rounder.predict(df_val.isup_grade, coefficients)
+    LOGGER.info(f'Counter preds: {Counter(final_preds)}')
+    LOGGER.info(f'coefficients: {coefficients}')
+    kappa = engine.quadratic_weighted_kappa(df_train.isup_grade, final_preds)
+    LOGGER.info(f'overall kappa score: {kappa}')
+
+
 if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
-
+    '''
     for fold_id in range(config.NUM_FOLDS):
 
         LOGGER.info("Starting fold {} ...".format(fold_id))
@@ -386,3 +424,8 @@ if __name__ == '__main__':
         if fold0_only:
             LOGGER.info("This is fold0 only experiment.")
             break
+    '''
+    calc_overall_kappa(EXP_ID)
+
+    LOGGER.info('all process done!')
+
