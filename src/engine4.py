@@ -139,7 +139,7 @@ def loss_fn(logits, targets):
 def cutmix_criterion(preds, targets):
     targets1, targets2, lam = targets[0], targets[1], targets[2]
     criterion = RMSELoss()
-    return lam * criterion(preds1, targets1) + (1 - lam) * criterion(preds1, targets2)
+    return lam * criterion(preds, targets1) + (1 - lam) * criterion(preds, targets2)
 
 
 def train_fn(data_loader, model, optimizer, device, scheduler=None):
@@ -157,12 +157,11 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
 
 
         if np.random.rand()<0.5:
-            images, targets = cutmix(images, targets, 0.4)
-            outputs = model(images).view(-1)
-            loss = cutmix_criterion(outputs, targets)
+            new_images, new_targets = cutmix(images, targets, 0.4)
+            outputs = model(new_images).view(-1)
+            loss = cutmix_criterion(outputs, new_targets)
 
         else:
-
             outputs = model(images).view(-1)
             loss = loss_fn(outputs, targets)
 
