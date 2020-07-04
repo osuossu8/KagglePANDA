@@ -102,24 +102,6 @@ setup_logger(out_file=LOGGER_PATH)
 LOGGER.info("seed={}".format(SEED))
 
 
-# https://albumentations.readthedocs.io/en/latest/api/augmentations.html
-'''
-data_transforms = albumentations.Compose([
-    # albumentations.Flip(p=0.3),  
-    albumentations.Transpose(p=0.5),
-    albumentations.VerticalFlip(p=0.5),
-    albumentations.HorizontalFlip(p=0.5),
-    albumentations.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=(15,30), p=0.3),
-    albumentations.Cutout(p=0.3),
-    albumentations.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225],
-    ),
-    # ToTensorV2(),
-    ])
-
-'''
-
 data_transforms = albumentations.Compose([
     albumentations.Transpose(p=0.5),
     albumentations.VerticalFlip(p=0.5),
@@ -364,18 +346,18 @@ def calc_overall_kappa(EXP_ID):
     val_idices0, val_preds0 = unpickle(f'models/{EXP_ID}_fold0.pkl')
     val_idices1, val_preds1 = unpickle(f'models/{EXP_ID}_fold1.pkl')
     val_idices2, val_preds2 = unpickle(f'models/{EXP_ID}_fold2.pkl')
-    # val_idices3, val_preds3 = unpickle(f'models/{EXP_ID}_fold3.pkl')
+    val_idices3, val_preds3 = unpickle(f'models/{EXP_ID}_fold3.pkl')
 
     all_idx = np.concatenate([np.concatenate(val_idices0), 
                               np.concatenate(val_idices1),
                               np.concatenate(val_idices2),
-                              # np.concatenate(val_idices3),
+                              np.concatenate(val_idices3),
                               ])
 
     all_val_preds = np.concatenate([val_preds0,
                                     val_preds1,
                                     val_preds2,
-                                    # val_preds3,
+                                    val_preds3,
                                    ])
 
 
@@ -383,7 +365,7 @@ def calc_overall_kappa(EXP_ID):
     df_val['image_id'] = all_idx
     df_val['isup_grade'] = all_val_preds
 
-    df_val = df_val.groupby('image_id').mean().reset_index(drop=True)
+    # df_val = df_val.groupby('image_id').mean().reset_index(drop=True)
     print(df_val.shape)
     print(df_val.head(3))
 
@@ -411,7 +393,7 @@ if __name__ == '__main__':
             LOGGER.info("This is fold0 only experiment.")
             break
     
-    # calc_overall_kappa(EXP_ID)
+    calc_overall_kappa(EXP_ID)
 
     LOGGER.info('all process done!')
 
