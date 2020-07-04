@@ -148,3 +148,21 @@
 2020-07-04 04:07:13,477 - INFO - val loss is not updated while 3 epochs of training
 2020-07-04 04:07:13,477 - INFO - Early Stopping
 2020-07-04 04:07:13,478 - INFO - best score=0.841612318999961 on epoch=14
+2020-07-04 06:11:09,865 - INFO - logger set up
+2020-07-04 06:11:09,865 - INFO - seed=718
+2020-07-04 06:11:58,757 - INFO - logger set up
+2020-07-04 06:11:58,757 - INFO - seed=718
+2020-07-04 06:12:27,755 - INFO - logger set up
+2020-07-04 06:12:27,755 - INFO - seed=718
+2020-07-04 06:14:44,351 - INFO - logger set up
+2020-07-04 06:14:44,351 - INFO - seed=718
+2020-07-04 06:14:52,519 - INFO - Counter preds: Counter({0.0: 2986, 1.0: 2730, 4.0: 1435, 2.0: 1367, 5.0: 1222, 3.0: 876})
+2020-07-04 06:14:52,519 - INFO - coefficients: [0.5 1.5 2.5 3.5 4.5]
+2020-07-04 06:14:52,543 - INFO - overall kappa score: 0.7809637627276655
+2020-07-04 06:14:52,544 - INFO - all process done!
+2020-07-04 06:16:18,479 - INFO - logger set up
+2020-07-04 06:16:18,479 - INFO - seed=718
+2020-07-04 06:16:26,730 - INFO - Counter preds: Counter({0.0: 2986, 1.0: 2730, 4.0: 1435, 2.0: 1367, 5.0: 1222, 3.0: 876})
+2020-07-04 06:16:26,730 - INFO - coefficients: [0.5 1.5 2.5 3.5 4.5]
+2020-07-04 06:16:26,754 - INFO - overall kappa score: 0.7809637627276655
+2020-07-04 06:16:26,755 - INFO - all process done!
