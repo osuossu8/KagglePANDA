@@ -127,6 +127,7 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
         optimizer.step()
 
         pred = outputs.sigmoid().sum(1).detach().round()
+
         y_true.append(targets.sum(1))
         y_pred.append(pred)
         # y_true.append(targets.cpu().detach().numpy())
@@ -138,6 +139,8 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
     # y_pred = np.concatenate(y_pred, 0)
     y_true = torch.cat(y_true).cpu().numpy()
     y_pred = torch.cat(y_pred).cpu().numpy()
+    print(y_true)
+    print(y_pred)
     print()
 
 

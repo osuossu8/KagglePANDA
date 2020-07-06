@@ -7,6 +7,10 @@ from torchvision import models
 from pretrainedmodels import se_resnext101_32x4d, se_resnext50_32x4d, senet154
 from pretrainedmodels import inceptionresnetv2
 from efficientnet_pytorch import EfficientNet
+from torch.nn import functional as F
+from torch.autograd import Variable
+from torch.nn.parameter import Parameter
+
 
 
 class Mish(nn.Module):
@@ -48,7 +52,7 @@ class EfficientHead(nn.Module):
             Mish(), nn.Conv2d(n_in_features, 512, kernel_size=3),
             nn.BatchNorm2d(512), GeM(), Flatten())
 
-        self.fc = nn.Linear(512, 1)
+        self.fc = nn.Linear(512, 5)
 
     def forward(self, x):
 

@@ -65,7 +65,7 @@ EXP_ID = 'exp4'
 import configs.config4 as config
 import src.engine4 as engine
 from src.model import CustomSEResNeXt
-from sec.efficient_model import Efficient
+from src.efficient_model import Efficient
 from src.machine_learning_util import seed_everything, prepare_labels, timer, to_pickle, unpickle
 
 
@@ -241,7 +241,7 @@ def run_one_fold(fold_id):
     df_train = pd.read_csv(config.TRAIN_PATH)
     LOGGER.info(df_train.shape)
 
-    DEBUG = 1
+    DEBUG = 0
     if DEBUG:
         df_train = df_train.head(25)
 
