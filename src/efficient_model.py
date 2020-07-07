@@ -61,6 +61,22 @@ class EfficientHead(nn.Module):
         return out
 
 
+class EfficientHeadV2(nn.Module):
+    def __init__(self, n_in_features, num_classes):
+        super(EfficientHead, self).__init__()
+
+        self.cnn_head = nn.Sequential(
+            Mish(), nn.Conv2d(n_in_features, 512, kernel_size=3),
+            nn.BatchNorm2d(512), GeM(), Flatten())
+
+        self.fc = nn.Linear(512, num_classes)
+
+    def forward(self, x):
+
+        x = self.cnn_head(x)
+        out = self.fc(x)
+        return out
+
 
 class Efficient(nn.Module):
     def __init__(self, num_classes, encoder='efficientnet-b0', pool_type="avg"):
@@ -80,7 +96,9 @@ class Efficient(nn.Module):
         elif pool_type == "gem":
             self.net.avg_pool = GeM()
             out_shape = n_channels_dict[encoder]
-        self.classifier = EfficientHead(out_shape) 
+        # self.classifier = EfficientHead(out_shape) 
+        self.classifier = EfficientHeadV2(out_shape, num_classes)
+
 
     def forward(self, x):
 
