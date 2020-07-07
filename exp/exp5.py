@@ -225,9 +225,9 @@ class PANDADataset:
         images /= 255
         images = images.transpose(2, 0, 1) 
 
-        # targets = self.df['isup_grade'].values[item]
-        targets = np.zeros(5).astype(np.float32)
-        targets[:self.df['isup_grade'].values[item]] = 1.
+        targets = self.df['isup_grade'].values[item]
+        # targets = np.zeros(5).astype(np.float32)
+        # targets[:self.df['isup_grade'].values[item]] = 1.
         
         return {
             'file_names': file_name,
@@ -353,7 +353,7 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
  
-    LOGGER.info(f'{EXP_ID} : exp2 (LB 0.85) + apply image 144, efficient, [1,1,1,0,0], BCELoss')
+    LOGGER.info(f'{EXP_ID} : exp2 (LB 0.85) + apply image 144, efficient, target 1d, BCELoss, 3fold')
     
     for fold_id in range(config.NUM_FOLDS):
 

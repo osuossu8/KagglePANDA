@@ -134,6 +134,12 @@ def loss_fn(logits, targets):
     return loss
 
 
+def cutmix_criterion(preds, targets):
+    targets1, targets2, lam = targets[0], targets[1], targets[2]
+    criterion = RMSELoss()
+    return lam * criterion(preds, targets1) + (1 - lam) * criterion(preds, targets2)
+
+
 # def loss_fn(logits, targets):
 #     loss_fct = nn.BCEWithLogitsLoss()
 #     loss = loss_fct(logits, targets)

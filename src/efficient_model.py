@@ -63,7 +63,7 @@ class EfficientHead(nn.Module):
 
 class EfficientHeadV2(nn.Module):
     def __init__(self, n_in_features, num_classes):
-        super(EfficientHead, self).__init__()
+        super(EfficientHeadV2, self).__init__()
 
         self.cnn_head = nn.Sequential(
             Mish(), nn.Conv2d(n_in_features, 512, kernel_size=3),
