@@ -165,8 +165,8 @@ def clean_image(image):
 
 
 tile_mode = 0
-tile_size = 128
-image_size = 128
+tile_size = config.TILE_SIZE
+image_size = config.IMG_SIZE
 n_tiles = 36
 idxes = list(range(n_tiles))
 

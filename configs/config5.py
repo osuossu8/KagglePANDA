@@ -12,6 +12,8 @@ NUM_FOLDS = 4
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 PATIENCE = 3
 LR = 1e-4
+TILE_SIZE = 128
+IMG_SIZE = 128
 
 
 INPUT_DIR = 'inputs'
