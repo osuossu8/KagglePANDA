@@ -351,13 +351,13 @@ def calc_overall_kappa(EXP_ID):
     all_idx = np.concatenate([np.concatenate(val_idices0), 
                               np.concatenate(val_idices1),
                               np.concatenate(val_idices2),
-                              np.concatenate(val_idices3),
+    #                          np.concatenate(val_idices3),
                               ])
 
     all_val_preds = np.concatenate([val_preds0,
                                     val_preds1,
                                     val_preds2,
-                                    val_preds3,
+    #                                val_preds3,
                                    ])
 
 
@@ -383,15 +383,17 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
     
-    for fold_id in range(config.NUM_FOLDS):
+    # for fold_id in range(config.NUM_FOLDS):
 
-        LOGGER.info("Starting fold {} ...".format(fold_id))
+    #     LOGGER.info("Starting fold {} ...".format(fold_id))
 
-        run_one_fold(fold_id)
+    # fold_id = 3
+    # LOGGER.info("Starting fold {} ...".format(fold_id))
+    # run_one_fold(fold_id)
 
-        if fold0_only:
-            LOGGER.info("This is fold0 only experiment.")
-            break
+    #     if fold0_only:
+    #         LOGGER.info("This is fold0 only experiment.")
+    #         break
     
     calc_overall_kappa(EXP_ID)
 
