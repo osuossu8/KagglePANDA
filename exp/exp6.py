@@ -352,7 +352,7 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
  
-    LOGGER.info(f'{EXP_ID} : exp4 (LB 0.85) + apply efficientb3')
+    LOGGER.info(f'{EXP_ID} : exp4 (LB 0.85) + apply img256 efficientb3')
     
     for fold_id in range(config.NUM_FOLDS):
 
