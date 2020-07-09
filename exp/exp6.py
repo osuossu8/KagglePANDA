@@ -274,7 +274,7 @@ def run_one_fold(fold_id):
     gc.collect()
 
     device = config.DEVICE
-    model = Efficient(5, encoder='efficientnet-b3', pool_type="gem")
+    model = Efficient(5, encoder='efficientnet-b0', pool_type="gem")
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LR)
@@ -352,7 +352,7 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
  
-    LOGGER.info(f'{EXP_ID} : exp4 (LB 0.85) + apply img256 efficientb3')
+    LOGGER.info(f'{EXP_ID} : exp4 (LB 0.85) + apply img256 efficientb0')
     
     for fold_id in range(config.NUM_FOLDS):
 
