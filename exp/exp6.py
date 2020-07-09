@@ -176,9 +176,9 @@ def get_conc_tile(image):
 
 
 tile_mode = 0
-tile_size = 128 # 144 # 256
-image_size = 128 # 144 # 256
-n_tiles = 25
+tile_size = 196 # 256
+image_size = 196 # 256
+n_tiles = 49
 idxes = list(range(n_tiles))
 
 
@@ -200,14 +200,21 @@ class PANDADataset:
 
         tiles, OK = get_tiles(image, tile_mode)
 
-        n_row_tiles = int(np.sqrt(n_tiles))
+        new_tiles = [tiles[x[0]] for x in sorted([(i, tiles[i]['img'].sum()) for i in range(len(tiles))], reverse=False)]
+        start = random.randint(2, 5)
+        new_n_tiles = 16
+        new_tiles = new_tiles[start:start+new_n_tiles]
+        n_row_tiles = int(np.sqrt(len(new_tiles)))
+
+        # n_row_tiles = int(np.sqrt(n_tiles))
         images = np.zeros((image_size * n_row_tiles, image_size * n_row_tiles, 3))
         for h in range(n_row_tiles):
             for w in range(n_row_tiles):
                 i = h * n_row_tiles + w
     
                 if len(tiles) > idxes[i]:
-                    this_img = tiles[idxes[i]]['img']
+                    # this_img = tiles[idxes[i]]['img']
+                    this_img = new_tiles[idxes[i]]['img']
                 else:
                     this_img = np.ones((image_size, image_size, 3)).astype(np.uint8) * 255
                 # this_img = 255 - this_img
@@ -275,7 +282,7 @@ def run_one_fold(fold_id):
     gc.collect()
 
     device = config.DEVICE
-    model = Efficient(5, encoder='efficientnet-b3', pool_type="gem")
+    model = Efficient(5, encoder='efficientnet-b0', pool_type="gem")
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LR)
@@ -353,7 +360,7 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
  
-    LOGGER.info(f'{EXP_ID} : exp4 (LB 0.85) + apply img128 tile25 efficientb3')
+    LOGGER.info(f'{EXP_ID} : exp4 (LB 0.85) + apply img196 sorted tile 16/49 efficientb0')
     
     for fold_id in range(config.NUM_FOLDS):
 
