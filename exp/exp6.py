@@ -176,9 +176,9 @@ def get_conc_tile(image):
 
 
 tile_mode = 0
-tile_size = 256 # 144 # 256
-image_size = 256 # 144 # 256
-n_tiles = 36
+tile_size = 128 # 144 # 256
+image_size = 128 # 144 # 256
+n_tiles = 25
 idxes = list(range(n_tiles))
 
 
@@ -243,6 +243,7 @@ def run_one_fold(fold_id):
 
     DEBUG = 0
     if DEBUG:
+        config.EPOCHS = 3
         df_train = df_train.head(25)
 
     TARGETS = 'isup_grade'
@@ -274,7 +275,7 @@ def run_one_fold(fold_id):
     gc.collect()
 
     device = config.DEVICE
-    model = Efficient(5, encoder='efficientnet-b0', pool_type="gem")
+    model = Efficient(5, encoder='efficientnet-b3', pool_type="gem")
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LR)
@@ -352,7 +353,7 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
  
-    LOGGER.info(f'{EXP_ID} : exp4 (LB 0.85) + apply img256 efficientb0')
+    LOGGER.info(f'{EXP_ID} : exp4 (LB 0.85) + apply img128 tile25 efficientb3')
     
     for fold_id in range(config.NUM_FOLDS):
 
