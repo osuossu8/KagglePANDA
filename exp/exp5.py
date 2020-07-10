@@ -287,8 +287,12 @@ def run_one_fold(fold_id):
 
     device = config.DEVICE
     # model = CustomSEResNeXt(model_name='se_resnext50_32x4d')
-    model = CustomResNeSt(model_name='resnest101', pretrained=True)
+    model = CustomResNeSt(model_name='resnest50', pretrained=True)
     model = model.to(device)
+
+    # if in trouble
+    # model.load_state_dict(torch.load('models/exp5_fold2.pth'))
+    # print(f'{EXP_ID}_fold{fold_id} : restart!')
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LR)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=30, eta_min=1e-6)
@@ -366,18 +370,25 @@ def calc_overall_kappa(EXP_ID):
 if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
-    LOGGER.info(f"{EXP_ID} : exp4 + ResNeSt101 model")
+    LOGGER.info(f"{EXP_ID} : exp4 + ResNeSt50 model")
     
-    for fold_id in range(config.NUM_FOLDS):
+    # for fold_id in range(config.NUM_FOLDS):
 
-        LOGGER.info("Starting fold {} ...".format(fold_id))
+    #     LOGGER.info("Starting fold {} ...".format(fold_id))
 
-        run_one_fold(fold_id)
+    #     run_one_fold(fold_id)
 
-        if fold0_only:
-            LOGGER.info("This is fold0 only experiment.")
-            break
+    #     if fold0_only:
+    #         LOGGER.info("This is fold0 only experiment.")
+    #         break
     
+    fold_id = 3
+
+    LOGGER.info("Starting fold {} ...".format(fold_id))
+
+    run_one_fold(fold_id)
+
+
     calc_overall_kappa(EXP_ID)
 
     LOGGER.info('all process done!')
