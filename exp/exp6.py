@@ -176,8 +176,8 @@ def get_conc_tile(image):
 
 
 tile_mode = 0
-tile_size = 196 # 256
-image_size = 196 # 256
+tile_size = 144 # 256
+image_size = 144 # 256
 n_tiles = 49
 idxes = list(range(n_tiles))
 
@@ -201,8 +201,8 @@ class PANDADataset:
         tiles, OK = get_tiles(image, tile_mode)
 
         new_tiles = [tiles[x[0]] for x in sorted([(i, tiles[i]['img'].sum()) for i in range(len(tiles))], reverse=False)]
-        start = random.randint(2, 5)
-        new_n_tiles = 16
+        start = 3 # random.randint(2, 5)
+        new_n_tiles = 36
         new_tiles = new_tiles[start:start+new_n_tiles]
         n_row_tiles = int(np.sqrt(len(new_tiles)))
 
