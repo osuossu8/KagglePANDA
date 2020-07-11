@@ -9,6 +9,10 @@ from torch.utils import model_zoo
 from collections import OrderedDict
 import math
 
+from torch.nn import functional as F
+from torch.autograd import Variable
+from torch.nn.parameter import Parameter
+
 
 pretrained_settings = {
     'se_resnext50_32x4d': {
@@ -317,4 +321,122 @@ class CustomSEResNeXt(nn.Module):
         
     def forward(self, x):
         x = self.model(x)
+        return x
+
+
+class Mish(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x * torch.tanh(F.softplus(x))
+
+
+def gem(x, p=3, eps=1e-6):
+    return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1./p)
+
+
+class GeM(nn.Module):
+    def __init__(self, p=3, eps=1e-6):
+        super(GeM,self).__init__()
+        self.p = Parameter(torch.ones(1)*p)
+        self.eps = eps
+
+    def forward(self, x):
+        return gem(x, p=self.p, eps=self.eps)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(' + 'p=' + '{:.4f}'.format(self.p.data.tolist()[0]) + ', ' + 'eps=' + str(self.eps) + ')'
+
+
+class AdaptiveConcatPool2d(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.admax2d = nn.AdaptiveMaxPool2d(output_size=(1, 1))
+        self.adavg2d = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+
+    def forward(self, x):
+        x = torch.cat([self.admax2d(x), self.adavg2d(x)], 1)
+        return x
+
+
+class AttentionPoolHead(nn.Module):
+    def __init__(self, c_in, c_out, n_tiles):
+        super().__init__()
+        self.maxpool = AdaptiveConcatPool2d()
+        # self.maxpool = GeM()
+        self.lin_key = nn.Linear(c_in * 2, c_in // 2)
+        self.lin_w = nn.Linear(c_in // 2, 1)
+        self.n_tiles = n_tiles
+        self.fc = nn.Sequential(nn.Dropout(0.5),
+                                nn.Linear(c_in * 9, 512),
+                                Mish(),
+                                nn.BatchNorm1d(512),
+                                nn.Dropout(0.5),
+                                nn.Linear(512, c_out))
+
+
+    def compute_attention(self, x):
+        keys = self.lin_key(x)
+        weights = self.lin_w(torch.tanh(keys))
+        weights = weights.reshape(-1, self.n_tiles)
+        weights = torch.softmax(weights, dim=1).unsqueeze(2)  # b, n, 1
+        return weights
+
+
+    def forward(self, x):
+        bn, c, h, w = x.shape
+        h = self.maxpool(x).squeeze(2).squeeze(2)  # bn, c
+        # print('h', h.shape)
+        weights = self.compute_attention(h)
+        # print('weights', weights.shape)
+        h = h.reshape(-1, self.n_tiles, c * 2)
+        h = h.transpose(1, 2)
+        # print('h', h.shape)
+        pooled = torch.matmul(h, weights).squeeze(2)
+        # print('pooled', pooled.shape)
+        pooled = pooled.view(8, -1)
+        # print('pooled', pooled.shape)
+        return self.fc(pooled)
+
+
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+
+class CustomSEResNeXtV2(nn.Module):
+
+    def __init__(self, model_name='se_resnext50_32x4d', num_classes=1, n_tiles=36):
+        super().__init__()
+                                    
+        # m = torch.hub.load('facebookresearch/semi-supervised-ImageNet1K-models', arch)
+        m = se_resnext50_32x4d(pretrained=None)
+        settings = pretrained_settings['se_resnext50_32x4d']['imagenet']
+        initialize_pretrained_model(m, 1000, settings)
+        nc = list(m.children())[-1].in_features
+        self.enc = nn.Sequential(*list(m.children())[:-2])
+        # self.head = AttentionPoolHead(nc, num_classes, n_tiles)                                                
+        self.head = nn.Sequential(
+                # AdaptiveConcatPool2d(),
+                GeM(),
+                Flatten(),
+                nn.Linear(nc,512),
+                Mish(),
+                nn.BatchNorm1d(512), 
+                nn.Dropout(0.5),
+                nn.Linear(512, num_classes))
+
+
+    def forward(self, x):
+        BS, C, H, W = x.shape
+        x = x.view(BS*36, C, 128, 128)
+        #x: bs*N x 3 x 128 x 128
+        x = self.enc(x)
+        #x: bs*N x C x 4 x 4
+        shape = x.shape
+        x = x.view(-1,36,shape[1],shape[2],shape[3]).permute(0,2,1,3,4).contiguous()\
+                          .view(-1,shape[1],shape[2]*36,shape[3])
+        x = self.head(x)
+        #x: bs x n
         return x
