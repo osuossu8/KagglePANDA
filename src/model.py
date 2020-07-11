@@ -318,3 +318,20 @@ class CustomSEResNeXt(nn.Module):
     def forward(self, x):
         x = self.model(x)
         return x
+
+
+class CustomSEResNeXtMrk2(nn.Module):
+
+    def __init__(self, model_name='se_resnext50_32x4d', num_classes=1):
+        assert model_name in ('se_resnext50_32x4d')
+        super().__init__()
+
+        self.model = se_resnext50_32x4d(pretrained=None)
+        settings = pretrained_settings['se_resnext50_32x4d']['imagenet']
+        initialize_pretrained_model(self.model, 1000, settings)
+        self.model.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.model.last_linear = nn.Linear(self.model.last_linear.in_features, num_classes)
+
+    def forward(self, x):
+        x = self.model(x)
+        return x
