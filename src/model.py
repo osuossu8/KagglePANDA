@@ -8,6 +8,9 @@ from torch.utils import model_zoo
 
 from collections import OrderedDict
 import math
+from torch.nn import functional as F
+from torch.autograd import Variable
+from torch.nn.parameter import Parameter
 
 
 pretrained_settings = {
@@ -334,4 +337,62 @@ class CustomSEResNeXtMrk2(nn.Module):
 
     def forward(self, x):
         x = self.model(x)
+        return x
+
+
+class Mish(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x * torch.tanh(F.softplus(x))
+
+
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+
+def gem(x, p=3, eps=1e-6):
+    return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1./p)
+
+
+class GeM(nn.Module):
+    def __init__(self, p=3, eps=1e-6):
+        super(GeM,self).__init__()
+        self.p = Parameter(torch.ones(1)*p)
+        self.eps = eps
+
+    def forward(self, x):
+        return gem(x, p=self.p, eps=self.eps)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(' + 'p=' + '{:.4f}'.format(self.p.data.tolist()[0]) + ', ' + 'eps=' + str(self.eps) + ')'
+
+
+class CustomSEResNeXtV2(nn.Module):
+
+    def __init__(self, model_name='se_resnext50_32x4d', num_classes=1):
+        assert model_name in ('se_resnext50_32x4d')
+        super().__init__()
+
+        m = se_resnext50_32x4d(pretrained=None)
+        settings = pretrained_settings['se_resnext50_32x4d']['imagenet']
+        initialize_pretrained_model(m, 1000, settings)
+        
+        nc = list(m.children())[-1].in_features
+        self.enc = nn.Sequential(*list(m.children())[:-2])
+        self.head = nn.Sequential(
+                GeM(),
+                Flatten(),
+                nn.Linear(nc,512),
+                Mish(),
+                nn.BatchNorm1d(512), 
+                nn.Dropout(0.5),
+                nn.Linear(512, num_classes))
+
+    def forward(self, x):
+        x = self.enc(x)
+        x = self.head(x)
         return x
