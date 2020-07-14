@@ -93,14 +93,8 @@ class RMSELoss(torch.nn.Module):
         return loss
 
 
-# def loss_fn(logits, targets):
-#     loss_fct = RMSELoss()
-#     loss = loss_fct(logits, targets)
-#     return loss
-
-
 def loss_fn(logits, targets):
-    loss_fct = nn.BCEWithLogitsLoss()
+    loss_fct = RMSELoss()
     loss = loss_fct(logits, targets)
     return loss
 
@@ -116,16 +110,20 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
 
         images = d["images"].to(device, dtype=torch.float32)
         targets = d["targets"].to(device, dtype=torch.float32)
-        model.zero_grad()
-        outputs = model(images) # .view(-1)
+        gleason_targets = d['gleason_targets'].to(device, dtype=torch.float32)
 
-        loss = loss_fn(outputs, targets)
+        model.zero_grad()
+        outputs, aux_outputs = model(images) # .view(-1)
+
+        loss1 = loss_fn(outputs, targets)
+        loss2 = loss_fn(aux_outputs, gleason_targets)
+        loss = loss1 * 0.5 + loss2 * 0.5
+
         loss.backward()
         optimizer.step()
 
-        pred = outputs.sigmoid().sum(1).detach().round()
-        y_true.append(targets.sum(1))
-        y_pred.append(pred)
+        y_true.append(targets)
+        y_pred.append(outputs)
 
         losses.update(loss.item(), images.size(0))
         tk0.set_postfix(loss=losses.avg)
@@ -146,12 +144,16 @@ def eval_fn(data_loader, model, device):
         for bi, d in enumerate(tk0):
             images = d["images"].to(device, dtype=torch.float32)
             targets = d["targets"].to(device, dtype=torch.float32)
-            outputs = model(images) # .view(-1)
-            loss = loss_fn(outputs, targets)
+            gleason_targets = d['gleason_targets'].to(device, dtype=torch.float32)
 
-            pred = outputs.sigmoid().sum(1).detach().round()
-            y_true.append(targets.sum(1))
-            y_pred.append(pred)
+            outputs, aux_outputs = model(images) # .view(-1)
+
+            loss1 = loss_fn(outputs, targets)
+            loss2 = loss_fn(aux_outputs, gleason_targets)
+            loss = loss1 * 0.5 + loss2 * 0.5
+
+            y_true.append(targets)
+            y_pred.append(outputs)
 
             val_ids.append(d["file_names"])
             losses.update(loss.item(), images.size(0))
@@ -163,8 +165,14 @@ def eval_fn(data_loader, model, device):
     # rank 化する
     # y_pred = rankdata(y_pred) / len(y_pred)
 
-    kappa = quadratic_weighted_kappa(y_true, y_pred)
+    optimized_rounder = OptimizedRounder()
+    optimized_rounder.fit(y_pred, y_true)
+    coefficients = optimized_rounder.coefficients()
+    final_preds = optimized_rounder.predict(y_pred, coefficients)
+    print(f'Counter preds: {Counter(final_preds)}')
+    print(f'coefficients: {coefficients}')
+    kappa = quadratic_weighted_kappa(y_true, final_preds)
 
     print('kappa score:', kappa)
-    return kappa, losses.avg, val_ids, y_pred # final_preds 
+    return kappa, losses.avg, val_ids, final_preds 
 

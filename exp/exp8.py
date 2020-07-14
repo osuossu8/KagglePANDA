@@ -64,7 +64,8 @@ sys.path.append("/usr/src/app/kaggle/panda-challenge")
 EXP_ID = 'exp8'
 import configs.config8 as config
 import src.engine8 as engine
-from src.model import CustomSEResNeXt, CustomSEResNeXtMrk2, CustomSEResNeXtV2
+from src.model import CustomSEResNeXt, CustomSEResNeXtMrk2, CustomSEResNeXtV2, GeM, Mish, CustomSEResNeXtMrk3
+from src.resnet_model import resnet34
 from src.machine_learning_util import seed_everything, prepare_labels, timer, to_pickle, unpickle
 
 
@@ -200,15 +201,23 @@ class PANDADataset:
         images /= 255
         images = images.transpose(2, 0, 1) 
 
-        # targets = self.df['isup_grade'].values[item]
-        targets = np.zeros(5).astype(np.float32)
-        targets[:self.df['isup_grade'].values[item]] = 1.
-        
+        targets = self.df['isup_grade'].values[item]
+
+        gleason_targets = self.df['gleason_sum'].values[item]        
+
         return {
             'file_names': file_name,
             'images': torch.tensor(images, dtype=torch.float32),
             'targets': torch.tensor(targets, dtype=torch.float32),
+            'gleason_targets': torch.tensor(gleason_targets, dtype=torch.float32),
         }
+
+
+def split_sum(x):
+    if x == 'negative':
+        return -1
+    x1, x2 = x.split('+')
+    return int(x1)+int(x2)
 
 
 def run_one_fold(fold_id):
@@ -223,6 +232,8 @@ def run_one_fold(fold_id):
 
     TARGETS = 'isup_grade'
 
+    # aux target
+    df_train['gleason_sum'] = df_train['gleason_score'].map(split_sum)
 
     kf = StratifiedKFold(n_splits = config.NUM_FOLDS, random_state = SEED)
     splits = list(kf.split(X=df_train, y=df_train[TARGETS].values))
@@ -250,7 +261,13 @@ def run_one_fold(fold_id):
     gc.collect()
 
     device = config.DEVICE
-    model = CustomSEResNeXtV2(model_name='se_resnext50_32x4d', num_classes=5)
+    # model = CustomSEResNeXtV2(model_name='se_resnext50_32x4d', num_classes=5)
+    # model = resnet34(pretrained=True)
+    # model.avg_pool = GeM()    
+    # model.fc = nn.Linear(model.fc.in_features, 5)
+
+    model = CustomSEResNeXtMrk3(model_name='se_resnext50_32x4d')
+
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LR)
@@ -274,6 +291,7 @@ def run_one_fold(fold_id):
             best_score = score
             best_epoch = epoch
             torch.save(model.state_dict(), os.path.join(config.OUT_DIR, '{}_fold{}.pth'.format(EXP_ID, fold_id)))
+            LOGGER.info(f'min valid loss : {min_loss}')
             LOGGER.info("save model at score={} on epoch={}".format(best_score, best_epoch))
             p = 0 
 
@@ -325,7 +343,7 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
 
-    LOGGER.info(f'{EXP_ID} : exp2 (LB 0.85) + apply 5d target, patience=4, custom head')    
+    LOGGER.info(f'{EXP_ID} : exp2 (LB 0.85) + apply aux loss with gleason_score')    
 
     for fold_id in range(config.NUM_FOLDS):
 

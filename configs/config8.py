@@ -10,7 +10,7 @@ VALID_BATCH_SIZE = 8
 EPOCHS = 30
 NUM_FOLDS = 4
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-PATIENCE = 4
+PATIENCE = 3
 LR = 1e-4
 
 
