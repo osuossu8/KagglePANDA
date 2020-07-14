@@ -104,8 +104,6 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
     losses = AverageMeter()
     tk0 = tqdm(data_loader, total=len(data_loader))
     
-    y_true = []
-    y_pred = []
     for bi, d in enumerate(tk0):
 
         images = d["images"].to(device, dtype=torch.float32)
@@ -117,20 +115,13 @@ def train_fn(data_loader, model, optimizer, device, scheduler=None):
 
         loss1 = loss_fn(outputs, targets)
         loss2 = loss_fn(aux_outputs, gleason_targets)
-        loss = loss1 * 0.5 + loss2 * 0.5
+        loss = loss1 * 0.6 + loss2 * 0.4
 
         loss.backward()
         optimizer.step()
 
-        y_true.append(targets)
-        y_pred.append(outputs)
-
         losses.update(loss.item(), images.size(0))
         tk0.set_postfix(loss=losses.avg)
-
-    y_true = torch.cat(y_true).cpu().detach().numpy()
-    y_pred = torch.cat(y_pred).cpu().detach().numpy()
-    print()
 
 
 def eval_fn(data_loader, model, device):
@@ -150,7 +141,7 @@ def eval_fn(data_loader, model, device):
 
             loss1 = loss_fn(outputs, targets)
             loss2 = loss_fn(aux_outputs, gleason_targets)
-            loss = loss1 * 0.5 + loss2 * 0.5
+            loss = loss1 * 0.6 + loss2 * 0.4
 
             y_true.append(targets)
             y_pred.append(outputs)
@@ -162,8 +153,7 @@ def eval_fn(data_loader, model, device):
     y_true = torch.cat(y_true).cpu().detach().numpy()
     y_pred = torch.cat(y_pred).cpu().detach().numpy()
 
-    # rank 化する
-    # y_pred = rankdata(y_pred) / len(y_pred)
+    y_pred = y_pred.reshape(-1)
 
     optimized_rounder = OptimizedRounder()
     optimized_rounder.fit(y_pred, y_true)
