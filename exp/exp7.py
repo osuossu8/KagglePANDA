@@ -59,7 +59,7 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 
-sys.path.append("/usr/src/app/kaggle/panda-challenge")
+sys.path.append("/home/osuosuossu18/KagglePANDA")
 
 EXP_ID = 'exp7'
 import configs.config7 as config
@@ -220,7 +220,7 @@ def run_one_fold(fold_id):
 
     DEBUG = 0
     if DEBUG:
-        df_train = df_train.head(100)
+        df_train = df_train.head(24)
         config.EPOCHS = 3
 
     TARGETS = 'isup_grade'
