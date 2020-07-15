@@ -221,7 +221,7 @@ def run_one_fold(fold_id):
     DEBUG = 0
     if DEBUG:
         df_train = df_train.head(24)
-        config.EPOCHS = 3
+        config.EPOCHS = 2
 
     TARGETS = 'isup_grade'
 
@@ -293,6 +293,8 @@ def run_one_fold(fold_id):
 
 def calc_overall_kappa(EXP_ID):
     df_train = pd.read_csv(config.TRAIN_PATH)
+
+    # df_train = df_train.head(24)
 
     val_idices0, val_preds0 = unpickle(f'models/{EXP_ID}_fold0.pkl')
     val_idices1, val_preds1 = unpickle(f'models/{EXP_ID}_fold1.pkl')
