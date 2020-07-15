@@ -335,7 +335,7 @@ if __name__ == '__main__':
 
     fold0_only = config.FOLD0_ONLY
 
-    LOGGER.info(f'{EXP_ID} : exp2 (LB 0.85) + apply aux loss with gleason_score')    
+    LOGGER.info(f'{EXP_ID} : exp2 (LB 0.85) + apply GeM')    
 
     for fold_id in range(config.NUM_FOLDS):
 
