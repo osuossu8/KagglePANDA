@@ -19,7 +19,7 @@ OUT_DIR = 'models'
 TRAIN_PATH = os.path.join(INPUT_DIR, "train.csv")
 TEST_PATH = os.path.join(INPUT_DIR, "test.csv")
 TRAIN_IMG_PATH = INPUT_DIR + '/train_images/train_images/'
-TRAIN_PROCESSED_IMG_PATH = INPUT_DIR + '/processed_train_images/processed/'
+TRAIN_PROCESSED_IMG_PATH = INPUT_DIR + '/processed/'
 TEST_IMG_PATH = INPUT_DIR + '/test_images/'
 SAMPLE_PATH = os.path.join(INPUT_DIR, "sample_submission.csv")
 

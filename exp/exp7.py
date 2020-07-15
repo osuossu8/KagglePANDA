@@ -59,7 +59,7 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 
-sys.path.append("/home/osuosuossu18/KagglePANDA")
+sys.path.append("/home/osuosuossu/KagglePANDA")
 
 EXP_ID = 'exp7'
 import configs.config7 as config
