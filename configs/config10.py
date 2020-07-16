@@ -5,7 +5,7 @@ import torch
 sys.path.append("/usr/src/app/kaggle/panda-challenge")
 
 
-TRAIN_BATCH_SIZE = 4
+TRAIN_BATCH_SIZE = 6
 VALID_BATCH_SIZE = 8
 EPOCHS = 30
 NUM_FOLDS = 3

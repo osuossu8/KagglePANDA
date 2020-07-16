@@ -153,8 +153,8 @@ def tile(img, sz=128, N=16):
 
 
 tile_mode = 0
-tile_size = 144 # 256
-image_size = 144 # 256
+tile_size = 128 # 144 # 256
+image_size = 128 # 144 # 256
 n_tiles = 36
 idxes = list(range(n_tiles))
 
