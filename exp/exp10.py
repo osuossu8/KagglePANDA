@@ -217,27 +217,17 @@ class PANDADataset:
         }
 
 
-def split_sum(x):
-    if x == 'negative':
-        return -1
-    x1, x2 = x.split('+')
-    return int(x1)+int(x2)
-
-
 def run_one_fold(fold_id):
 
     df_train = pd.read_csv(config.TRAIN_PATH)
     LOGGER.info(df_train.shape)
 
-    DEBUG = 1
+    DEBUG = 0
     if DEBUG:
         df_train = df_train.head(24)
         config.EPOCHS = 3
 
     TARGETS = 'isup_grade'
-
-    # aux target
-    df_train['gleason_sum'] = df_train['gleason_score'].map(split_sum)
 
     kf = StratifiedKFold(n_splits = config.NUM_FOLDS, random_state = SEED)
     splits = list(kf.split(X=df_train, y=df_train[TARGETS].values))
@@ -265,7 +255,6 @@ def run_one_fold(fold_id):
     gc.collect()
 
     device = config.DEVICE
-    # model = CustomSEResNeXtV3(model_name='se_resnext50_32x4d', num_classes=1)
     model = Efficient(5, encoder='efficientnet-b0', pool_type="gem")
 
     model = model.to(device)
@@ -309,7 +298,7 @@ def run_one_fold(fold_id):
 def calc_overall_kappa(EXP_ID):
     df_train = pd.read_csv(config.TRAIN_PATH)
 
-    df_train = df_train.head(24)
+    # df_train = df_train.head(24)
 
     val_idices0, val_preds0 = unpickle(f'models/{EXP_ID}_fold0.pkl')
     val_idices1, val_preds1 = unpickle(f'models/{EXP_ID}_fold1.pkl')
