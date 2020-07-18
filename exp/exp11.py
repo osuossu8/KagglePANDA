@@ -104,6 +104,7 @@ LOGGER.info("seed={}".format(SEED))
 
 
 data_transforms = albumentations.Compose([
+    albumentations.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15, p=0.5),
     albumentations.Transpose(p=0.5),
     albumentations.VerticalFlip(p=0.5),
     albumentations.HorizontalFlip(p=0.5),
