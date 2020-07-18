@@ -152,18 +152,19 @@ def tile(img, sz=128, N=16):
     return img
 
 
-tile_mode = 0
-tile_size = 160 # 256
-image_size = 160 # 256
+# tile_mode = 0
+tile_size = 128 # 256
+image_size = 128 # 256
 n_tiles = 36
 idxes = list(range(n_tiles))
 
 
-class PANDADataset:
-    def __init__(self, df, indices, transform=None):
+class PANDADataset(Dataset):
+    def __init__(self, df, indices, transform=None, tile_mode=0):
         self.df = df.iloc[indices]
         self.data_provider = df.iloc[indices]['data_provider'].values
         self.transform = transform
+        self.tile_mode = tile_mode
 
     def __len__(self):
         return len(self.df)
@@ -176,7 +177,7 @@ class PANDADataset:
 
         image = cv2.imread(file_path) 
 
-        tiles, OK = get_tiles(image, tile_mode)
+        tiles, OK = get_tiles(image, self.tile_mode)
 
         n_row_tiles = int(np.sqrt(n_tiles))
         images = np.zeros((image_size * n_row_tiles, image_size * n_row_tiles, 3))
@@ -232,7 +233,13 @@ def run_one_fold(fold_id):
     val_idx = splits[fold_id][1]
 
     train_dataset = PANDADataset(df=df_train, indices=train_idx, 
-                                 transform=data_transforms)
+                                 transform=data_transforms, tile_mode=0)
+
+    train_dataset2 = PANDADataset(df=df_train, indices=train_idx,
+                                  transform=data_transforms, tile_mode=2)
+
+    train_dataset = train_dataset+train_dataset2
+
 
     train_loader = torch.utils.data.DataLoader(
                    train_dataset, shuffle=True, 
@@ -240,7 +247,7 @@ def run_one_fold(fold_id):
                    num_workers=0, pin_memory=True)
 
     val_dataset = PANDADataset(df=df_train, indices=val_idx, 
-                               transform=data_transforms_test)
+                               transform=data_transforms_test, tile_mode=0)
 
     val_loader = torch.utils.data.DataLoader(
                  val_dataset, shuffle=False, 
